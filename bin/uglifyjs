@@ -192,8 +192,9 @@ function squeeze_it(code) {
                         });
                         if (options.unsafe)
                                 ast = pro.ast_squeeze_more(ast);
-                        if (options.mangle_properties.length)
-                            ast = pro.ast_mangle_properties(ast, "mp", options.mangle_properties);
+                        if (options.mangle_properties.length) {
+                                ast = pro.ast_mangle_properties(ast, "__p", options.mangle_properties);
+                        }
                         return ast;
                 });
                 if (options.ast)
