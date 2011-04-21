@@ -28,7 +28,6 @@ var options = {
                 quote_keys: false,
                 space_colon: false
         },
-        mangle_properties: [],
         output: true            // stdout
 };
 
@@ -57,10 +56,6 @@ out: while (args.length > 0) {
             case "--no-mangle":
             case "-nm":
                 options.mangle = false;
-                break;
-            case "-mp":
-            case "--mangle-properties":
-                options.mangle_properties = options.mangle_properties.concat(args.shift().split(","));
                 break;
             case "--no-squeeze":
             case "-ns":
@@ -192,9 +187,6 @@ function squeeze_it(code) {
                         });
                         if (options.unsafe)
                                 ast = pro.ast_squeeze_more(ast);
-                        if (options.mangle_properties.length) {
-                                ast = pro.ast_mangle_properties(ast, "__p", options.mangle_properties);
-                        }
                         return ast;
                 });
                 if (options.ast)

@@ -23,10 +23,10 @@ lang="en" xml:lang="en">
   .timestamp-kwd { color: #5f9ea0; }
   p.verse { margin-left: 3% }
   pre {
-    border: 1pt solid #AEBDCC;
-    background-color: #F3F5F7;
-    padding: 5pt;
-    font-family: courier, monospace;
+	border: 1pt solid #AEBDCC;
+	background-color: #F3F5F7;
+	padding: 5pt;
+	font-family: courier, monospace;
         font-size: 90%;
         overflow:auto;
   }
@@ -479,19 +479,6 @@ foo.toString()  ==&gt;  foo+""
 
 </li>
 </ul>
-</li>
-<li>
-<code>-mp name,name,...</code> or <code>--mangle-properties name,name,...</code> &mdash; mangle the specified names where they
-occur as literal property names. New names will be generated in the form pNN where N is a sequence of digits, and where properties are accessed via literals the specified names will be replaced. Currently this handles the following forms
-<ul>
-<li> { <b>propertyName</b>: someVal } ==> { <b>p1</b>: someVal }</li>
-<li> someObject.<b>propertyName</b> ==> someObject.<b>p1</b></li>
-<li> someObject[<b>"propertyName"</b>] ==> someObject[<b>"p1"</b>]</li>
-<li> <b>"propertyName"</b> in someObject ==> { <b>"p1"</b> in someObject }</li>
-<li> someObj.hasOwnProperty(<b>"propertyName"</b>) ==> { someObj.hasOwnProperty(<b>"p1"</b>)</li>
-<li> someObj.propertyIsEnumerable(<b>"propertyName"</b>) ==> { someObj.propertyIsEnumrable(<b>"p1"</b>)</li>
-</ul>
-Note that while generally the names will not be mangled where used as strings, the last 4 represent special cases where, as long as the property is accessed via a string literal, the property names will be correctly mangled.
 </li>
 <li>
 <code>--max-line-len</code> (default 32K characters) &mdash; add a newline after around
