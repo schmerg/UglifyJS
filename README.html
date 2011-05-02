@@ -23,10 +23,10 @@ lang="en" xml:lang="en">
   .timestamp-kwd { color: #5f9ea0; }
   p.verse { margin-left: 3% }
   pre {
-	border: 1pt solid #AEBDCC;
-	background-color: #F3F5F7;
-	padding: 5pt;
-	font-family: courier, monospace;
+    border: 1pt solid #AEBDCC;
+    background-color: #F3F5F7;
+    padding: 5pt;
+    font-family: courier, monospace;
         font-size: 90%;
         overflow:auto;
   }
@@ -93,6 +93,7 @@ lang="en" xml:lang="en">
 <ul>
 <li><a href="#sec-1_4_1">1.4.1 API </a></li>
 <li><a href="#sec-1_4_2">1.4.2 Beautifier shortcoming &ndash; no more comments </a></li>
+<li><a href="#sec-1_4_3">1.4.3 Use as a code pre-processor </a></li>
 </ul>
 </li>
 <li><a href="#sec-1_5">1.5 Compression &ndash; how good is it? </a></li>
@@ -211,6 +212,12 @@ remove some unreachable code and warn about it (code that follows a
 function/variable declarations).
 </li>
 </ul>
+</li>
+<li>
+act a limited version of a pre-processor (c.f. the pre-processor of C/C++) to allow you to safely
+replace selected global symbols with specified values.  When combined with the optimisations above
+this can make UglifyJS operate slightly more like a compilation process, in that when certain
+symbols are replaced by constant values, entire code blocks may be optimised away as unreachable.
 </li>
 </ul>
 
@@ -463,6 +470,30 @@ each operation takes).
 
 </li>
 <li>
+<code>-d SYMBOL[=VALUE]</code> or <code>--define SYMBOL[=VALUE]</code> &mdash; will replace all instances
+of the specified symbol where used as an identifier (except where symbol has properly declared by a var
+declaration or use as function parameter or similar) with the specified value. This argument may be specified
+multiple times to define multiple symbols - if no value is specified the symbol will be replaced with the
+value <code>true</code>, or you can specify a numeric value (such as <code>1024</code>), a quoted string
+value (such as <code>"object"</code> or <code>'https://github.com'</code>), or the name of another
+symbol or keyword (such as <code>null</code> or <code>document</code>).<br/>
+This allows you, for example, to assign meaningful names to key constant values but discard the symbolic names
+in the uglified version for brevity/efficiency, or when used wth care, allows UglifyJS to operate as a form
+of <em>conditional compilation</em> whereby defining appropriate values may, by dint of the constant folding
+and dead code removal features above, remove entire superfluous code blocks (e.g. completely remove
+instrumentation or trace code for production use).<br/>
+Where string values are being defined, the handling of quotes are likely to be subject to the specifics of
+your command shell environment, so you may need to experiment with quoting styles depending on your platform,
+or you may find the option <code>--define-from-module</code> more suitable for use.
+</li>
+<li>
+<code>-define-from-module SOMEMODULE</code> &mdash; will load the named module (as per the NodeJS
+<code>require</code> function) and iterate all the exported properties of the module defining them
+as symbol names to be defined (as if by the <code>--define</code> option) per the name of each property
+(i.e. without the module name prefix) and given the value of the property. This is a much easier way to
+handle and document groups of symbols to be defined rather than a large number of <code>--define</code> options.
+</li>
+<li>
 <code>--extra</code> &mdash; enable additional optimizations that have not yet been
 extensively tested.  These might, or might not, break your code.  If you
 find a bug using this option, please report a test case.
@@ -555,6 +586,10 @@ options:
 <code>except</code> &ndash; an array of names to exclude from compression.
 
 </li>
+<li>
+<code>defines</code> &ndash; an object with properties named after symbols to replace (see the
+<code> --define</code> option for the script) and the values representing the AST replacement value.
+</li>
 </ul>
 </li>
 <li>
@@ -632,6 +667,69 @@ the parsing stage, when we build the initial AST.  Comments don't really
 make sense in the AST, and while we could add nodes for them, it would be
 inconvenient because we'd have to add special rules to ignore them at all
 the processing stages.
+</p>
+</div>
+</div>
+
+<div id="outline-container-1_4_3" class="outline-4">
+<h4 id="sec-1_4_3"><span class="section-number-4">1.4.3</span> Use as a code pre-processor </h4>
+<div class="outline-text-4" id="text-1_4_3">
+
+<p>
+The <code>--define</code> option can be used, particularly when combined with the constant folding
+logic, as a form of pre-processor to enable or remove particular constructions, such as might be used
+for instrumenting development code, or to produce variations aimed at a specific platform.
+</p>
+<p>
+The code below illustrates the way this can be done, and how the symbol replacement is performed.
+</p>
+<pre class="src src-js">
+CLAUSE1: if (typeof DEVMODE === 'undefined') {
+    DEVMODE = true;
+}
+
+CLAUSE2: function init() {
+    if (DEVMODE) {
+        console.log("init() called");
+    }
+    ....
+    DEVMODE &amp;&amp; console.log("init() complete");
+}
+
+CLAUSE3: function reportDeviceStatus(device) {
+    var DEVMODE = device.mode, DEVNAME = device.name;
+    if (DEVMODE === 'open') {
+        ....
+    }
+}
+</pre>
+<p><code></code>
+When the above code is normally executed, the undeclared global variable <code>DEVMODE</code>
+will be assigned the value <code>true</code> (see <code>CLAUSE1</code>) and so the
+<code>init()</code> function (<code>CLAUSE2</code>) will write messages to the console log
+when executed, but in <code>CLAUSE3</code> a locally declared variable will mask access to
+the <code>DEVMODE</code> global symbol.
+</p>
+<p>
+If the above code is processed by UglifyJS with an argument of <code>--define DEVMODE=false</code>
+then UglifyJS will replace <code>DEVMODE</code> with the boolean constant value <code>false</code>
+within <code>CLAUSE1</code> and <code>CLAUSE2</code>, but it will leave <code>CLAUSE3</code> as it
+stands because there <code>DEVMODE</code> resolves to a validly declared variable.<br/>
+And more so, the constant-folding features of UglifyJS will recognise that the <code>if</code>
+condition of <code>CLAUSE1</code> is thus always false, and so will remove the test and body of
+<code>CLAUSE1</code> altogether (including the otherwise slightly problematical statement
+<code>false&nbsp;=&nbsp;true;</code> which it will have formed by replacing <code>DEVMODE</code> in the body).
+Similarly, within <code>CLAUSE2</code> both calls to <code>console.log()</code> will be removed altogether.
+</p>
+<p>
+In this way you can mimic, to a limited degree, the functionality of the C/C++ pre-processor to enable
+or completely remove blocks depending on how certain symbols are defined - perhaps using UglifyJS to
+generate different versions of source aimed at different environments
+</p>
+<p>
+It is recommmended (but not made mandatory) that symbols designed for this purpose are given names
+consisting of UPPER_CASE_LETTERS to distinguish them from other (normal) symbols and avoid the sort of
+clash that <code>CLAUSE3</code> above illustrates.
 </p>
 </div>
 </div>
